@@ -6,7 +6,6 @@ import config
 import torch
 from typing import Union, Optional, Tuple
 from diffusers import AutoencoderKL, UNet2DConditionModel, ControlNetModel
-from diffusers.models.unet_2d_condition import UNet2DConditionOutput
 from diffusers.models.controlnet import ControlNetOutput, BaseOutput as ControlNetBaseOutput
 from diffusers.pipelines.stable_diffusion.safety_checker import StableDiffusionSafetyChecker
 from huggingface_hub import model_info
@@ -223,7 +222,7 @@ class PatchedUNet2DConditionModel(UNet2DConditionModel):
         down_block_10_additional_residual: torch.Tensor,
         down_block_11_additional_residual: torch.Tensor,
         mid_block_additional_residual: torch.Tensor,
-    ) -> Union[UNet2DConditionOutput, Tuple]:
+    ) -> Union[UNet2DConditionModel, Tuple]:
         down_block_add_res = (
             down_block_0_additional_residual, down_block_1_additional_residual, down_block_2_additional_residual,
             down_block_3_additional_residual, down_block_4_additional_residual, down_block_5_additional_residual,
@@ -240,22 +239,22 @@ class PatchedUNet2DConditionModel(UNet2DConditionModel):
 
 def controlnet_unet_inputs(batchsize, torch_dtype):
     return {
-        "sample": torch.rand((batchsize, 4, 64, 64), dtype=torch_dtype),
+        "sample": torch.rand((batchsize, 4, config.unet_sample_size, config.unet_sample_size), dtype=torch_dtype),
         "timestep": torch.rand((batchsize,), dtype=torch_dtype),
         "encoder_hidden_states": torch.rand((batchsize, 77, 768), dtype=torch_dtype),
-        "down_block_0_additional_residual": torch.rand((batchsize, 320, 64, 64), dtype=torch_dtype),
-        "down_block_1_additional_residual": torch.rand((batchsize, 320, 64, 64), dtype=torch_dtype),
-        "down_block_2_additional_residual": torch.rand((batchsize, 320, 64, 64), dtype=torch_dtype),
-        "down_block_3_additional_residual": torch.rand((batchsize, 320, 32, 32), dtype=torch_dtype),
-        "down_block_4_additional_residual": torch.rand((batchsize, 640, 32, 32), dtype=torch_dtype),
-        "down_block_5_additional_residual": torch.rand((batchsize, 640, 32, 32), dtype=torch_dtype),
-        "down_block_6_additional_residual": torch.rand((batchsize, 640, 16, 16), dtype=torch_dtype),
-        "down_block_7_additional_residual": torch.rand((batchsize, 1280, 16, 16), dtype=torch_dtype),
-        "down_block_8_additional_residual": torch.rand((batchsize, 1280, 16, 16), dtype=torch_dtype),
-        "down_block_9_additional_residual": torch.rand((batchsize, 1280, 8, 8), dtype=torch_dtype),
-        "down_block_10_additional_residual": torch.rand((batchsize, 1280, 8, 8), dtype=torch_dtype),
-        "down_block_11_additional_residual": torch.rand((batchsize, 1280, 8, 8), dtype=torch_dtype),
-        "mid_block_additional_residual": torch.rand((batchsize, 1280, 8, 8), dtype=torch_dtype)
+        "down_block_0_additional_residual": torch.rand((batchsize, config.unet_sample_size * 5, config.unet_sample_size, config.unet_sample_size), dtype=torch_dtype),
+        "down_block_1_additional_residual": torch.rand((batchsize, config.unet_sample_size * 5, config.unet_sample_size, config.unet_sample_size), dtype=torch_dtype),
+        "down_block_2_additional_residual": torch.rand((batchsize, config.unet_sample_size * 5, config.unet_sample_size, config.unet_sample_size), dtype=torch_dtype),
+        "down_block_3_additional_residual": torch.rand((batchsize, config.unet_sample_size * 5, config.unet_sample_size // 2, config.unet_sample_size // 2), dtype=torch_dtype),
+        "down_block_4_additional_residual": torch.rand((batchsize, config.unet_sample_size * 10, config.unet_sample_size // 2, config.unet_sample_size // 2), dtype=torch_dtype),
+        "down_block_5_additional_residual": torch.rand((batchsize, config.unet_sample_size * 10, config.unet_sample_size // 2, config.unet_sample_size // 2), dtype=torch_dtype),
+        "down_block_6_additional_residual": torch.rand((batchsize, config.unet_sample_size * 10, config.unet_sample_size // 4, config.unet_sample_size // 4), dtype=torch_dtype),
+        "down_block_7_additional_residual": torch.rand((batchsize, config.unet_sample_size * 20, config.unet_sample_size // 4, config.unet_sample_size // 4), dtype=torch_dtype),
+        "down_block_8_additional_residual": torch.rand((batchsize, config.unet_sample_size * 20, config.unet_sample_size // 4, config.unet_sample_size // 4), dtype=torch_dtype),
+        "down_block_9_additional_residual": torch.rand((batchsize, config.unet_sample_size * 20, config.unet_sample_size // 8, config.unet_sample_size // 8), dtype=torch_dtype),
+        "down_block_10_additional_residual": torch.rand((batchsize, config.unet_sample_size * 20, config.unet_sample_size // 8, config.unet_sample_size // 8), dtype=torch_dtype),
+        "down_block_11_additional_residual": torch.rand((batchsize, config.unet_sample_size * 20, config.unet_sample_size // 8, config.unet_sample_size // 8), dtype=torch_dtype),
+        "mid_block_additional_residual": torch.rand((batchsize, config.unet_sample_size * 20, config.unet_sample_size // 8, config.unet_sample_size // 8), dtype=torch_dtype)
     }
 
 
