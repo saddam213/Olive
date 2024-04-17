@@ -215,7 +215,7 @@ def optimize(
 
     model_info = {}
 
-    submodel_names = ["vae_encoder", "vae_decoder", "unet", "text_encoder"]
+    submodel_names = ["vae_encoder", "vae_decoder", "unet", "controlnet", "text_encoder"]
 
     has_safety_checker = getattr(pipeline, "safety_checker", None) is not None
 
@@ -233,7 +233,7 @@ def optimize(
             olive_config = json.load(fin)
         olive_config = update_config_with_provider(olive_config, provider)
 
-        if submodel_name in ("unet", "text_encoder"):
+        if submodel_name in ("unet", "controlnet", "text_encoder"):
             olive_config["input_model"]["config"]["model_path"] = model_id
         else:
             # Only the unet & text encoder are affected by LoRA, so it's better to use the base model ID for

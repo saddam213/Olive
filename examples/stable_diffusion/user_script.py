@@ -4,11 +4,14 @@
 # --------------------------------------------------------------------------
 import config
 import torch
-from diffusers import AutoencoderKL, UNet2DConditionModel
+from typing import Union, Optional, Tuple
+from diffusers import AutoencoderKL, UNet2DConditionModel, ControlNetModel
+from diffusers.models.unet_2d_condition import UNet2DConditionOutput
+from diffusers.models.controlnet import ControlNetOutput, BaseOutput as ControlNetBaseOutput
 from diffusers.pipelines.stable_diffusion.safety_checker import StableDiffusionSafetyChecker
 from huggingface_hub import model_info
 from transformers.models.clip.modeling_clip import CLIPTextModel
-
+from dataclasses import dataclass
 
 # Helper latency-only dataloader that creates random tensors with no label
 class RandomDataLoader:
@@ -197,7 +200,78 @@ def unet_conversion_inputs(model=None):
 def unet_data_loader(data_dir, batchsize, *args, **kwargs):
     return RandomDataLoader(unet_inputs, batchsize, torch.float16)
 
+# -----------------------------------------------------------------------------
+# CONTROLNET - UNET
+# -----------------------------------------------------------------------------
 
+class PatchedUNet2DConditionModel(UNet2DConditionModel):
+    def forward(
+        self,
+        sample: torch.FloatTensor,
+        timestep: Union[torch.Tensor, float, int],
+        encoder_hidden_states: torch.Tensor,
+        down_block_0_additional_residual: torch.Tensor,
+        down_block_1_additional_residual: torch.Tensor,
+        down_block_2_additional_residual: torch.Tensor,
+        down_block_3_additional_residual: torch.Tensor,
+        down_block_4_additional_residual: torch.Tensor,
+        down_block_5_additional_residual: torch.Tensor,
+        down_block_6_additional_residual: torch.Tensor,
+        down_block_7_additional_residual: torch.Tensor,
+        down_block_8_additional_residual: torch.Tensor,
+        down_block_9_additional_residual: torch.Tensor,
+        down_block_10_additional_residual: torch.Tensor,
+        down_block_11_additional_residual: torch.Tensor,
+        mid_block_additional_residual: torch.Tensor,
+    ) -> Union[UNet2DConditionOutput, Tuple]:
+        down_block_add_res = (
+            down_block_0_additional_residual, down_block_1_additional_residual, down_block_2_additional_residual,
+            down_block_3_additional_residual, down_block_4_additional_residual, down_block_5_additional_residual,
+            down_block_6_additional_residual, down_block_7_additional_residual, down_block_8_additional_residual,
+            down_block_9_additional_residual, down_block_10_additional_residual, down_block_11_additional_residual)
+        return super().forward(
+            sample = sample,
+            timestep = timestep,
+            encoder_hidden_states = encoder_hidden_states,
+            down_block_additional_residuals = down_block_add_res,
+            mid_block_additional_residual = mid_block_additional_residual,
+            return_dict = False
+        )
+
+def controlnet_unet_inputs(batchsize, torch_dtype):
+    return {
+        "sample": torch.rand((batchsize, 4, 64, 64), dtype=torch_dtype),
+        "timestep": torch.rand((batchsize,), dtype=torch_dtype),
+        "encoder_hidden_states": torch.rand((batchsize, 77, 768), dtype=torch_dtype),
+        "down_block_0_additional_residual": torch.rand((batchsize, 320, 64, 64), dtype=torch_dtype),
+        "down_block_1_additional_residual": torch.rand((batchsize, 320, 64, 64), dtype=torch_dtype),
+        "down_block_2_additional_residual": torch.rand((batchsize, 320, 64, 64), dtype=torch_dtype),
+        "down_block_3_additional_residual": torch.rand((batchsize, 320, 32, 32), dtype=torch_dtype),
+        "down_block_4_additional_residual": torch.rand((batchsize, 640, 32, 32), dtype=torch_dtype),
+        "down_block_5_additional_residual": torch.rand((batchsize, 640, 32, 32), dtype=torch_dtype),
+        "down_block_6_additional_residual": torch.rand((batchsize, 640, 16, 16), dtype=torch_dtype),
+        "down_block_7_additional_residual": torch.rand((batchsize, 1280, 16, 16), dtype=torch_dtype),
+        "down_block_8_additional_residual": torch.rand((batchsize, 1280, 16, 16), dtype=torch_dtype),
+        "down_block_9_additional_residual": torch.rand((batchsize, 1280, 8, 8), dtype=torch_dtype),
+        "down_block_10_additional_residual": torch.rand((batchsize, 1280, 8, 8), dtype=torch_dtype),
+        "down_block_11_additional_residual": torch.rand((batchsize, 1280, 8, 8), dtype=torch_dtype),
+        "mid_block_additional_residual": torch.rand((batchsize, 1280, 8, 8), dtype=torch_dtype)
+    }
+
+
+def controlnet_unet_load(model_name):
+    base_model_id = get_base_model_name(model_name)
+    model = PatchedUNet2DConditionModel.from_pretrained(base_model_id, subfolder="unet")
+    return model
+
+
+def controlnet_unet_conversion_inputs(model):
+    return tuple(controlnet_unet_inputs(1, torch.float32).values())
+
+
+def controlnet_unet_data_loader(data_dir, batchsize, *args, **kwargs):
+    return RandomDataLoader(controlnet_unet_inputs, batchsize, torch.float16)
+	
 # -----------------------------------------------------------------------------
 # VAE ENCODER
 # -----------------------------------------------------------------------------

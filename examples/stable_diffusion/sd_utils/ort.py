@@ -2,6 +2,7 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 # --------------------------------------------------------------------------
+import os
 import json
 import shutil
 import sys
@@ -119,6 +120,9 @@ def save_onnx_pipeline(
     for submodel_name in submodel_names:
         src_path = model_info[submodel_name]["optimized"]["path"]
         dst_path = optimized_model_dir / submodel_name / "model.onnx"
+        exists = os.path.exists(dst_path)
+        if not exists:
+            os.mkdir(optimized_model_dir / submodel_name)
         shutil.copyfile(src_path, dst_path)
 
     print(f"The optimized pipeline is located here: {optimized_model_dir}")
